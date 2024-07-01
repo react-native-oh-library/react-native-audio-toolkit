@@ -1,0 +1,11 @@
+[
+    {
+        "Name": "@react-native-clipboard/clipboard",
+        "License": "MIT License",
+        "License File": "https://github.com/react-native-clipboard/clipboard/blob/master/LICENSE",
+        "Version Number": "1.12.1",
+        "Owner" : "M.Haris Baig <harisbaig100@gmail.com>"
+        "Upstream URL": "https://github.com/react-native-clipboard/clipboard",
+        "Description": "React Native Clipboard API for macOS, iOS, Android, and Windows."
+    }
+]

@@ -1,20 +1,15 @@
 'use strict';
-
 import {
-  NativeModules,
-  DeviceEventEmitter,
   NativeAppEventEmitter,
-  Platform
-} from 'react-native';
-
+  DeviceEventEmitter
+} from 'react-native'
+import RCTAudioRecorder from '@react-native-oh-library/audio-toolkit/src/RecorderModule'
 import async from 'async';
 import EventEmitter from 'eventemitter3';
-import MediaStates from './MediaStates';
+import MediaStates from '@react-native-community/audio-toolkit/src/MediaStates';
 
 // Only import specific items from lodash to keep build size down
 import noop from 'lodash/noop';
-
-var RCTAudioRecorder = NativeModules.AudioRecorder;
 
 var recorderId = 0;
 
