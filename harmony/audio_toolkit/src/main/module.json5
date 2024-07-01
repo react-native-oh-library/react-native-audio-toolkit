@@ -1,0 +1,7 @@
+{
+  "module": {
+    "name": "audio_toolkit",
+    "type": "har",
+    "deviceTypes": ['default'],
+  }
+}

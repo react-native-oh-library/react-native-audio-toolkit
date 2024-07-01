@@ -1,18 +1,17 @@
-import { NativeModules, DeviceEventEmitter, NativeAppEventEmitter, Platform } from 'react-native';
-
+import {  DeviceEventEmitter, NativeAppEventEmitter, Platform } from 'react-native';
+import RCTAudioPlayer from './PlayerModule'
 import async from 'async';
 import EventEmitter from 'eventemitter3';
-import MediaStates from './MediaStates';
-
+import MediaStates from '@react-native-community/audio-toolkit/src/MediaStates';
 // Only import specific items from lodash to keep build size down
 import filter from 'lodash/filter';
 import identity from 'lodash/identity';
 import last from 'lodash/last';
 import noop from 'lodash/noop';
 
-const RCTAudioPlayer = NativeModules.AudioPlayer;
-
 let playerId = 0;
+
+// const RCTAudioPlayer = NativeModules.AudioPlayer;
 
 export const PlaybackCategories = {
   Playback: 1,
@@ -165,19 +164,19 @@ class Player extends EventEmitter {
 
   play(callback = noop) {
     const tasks = [];
-
-    // Make sure player is prepared
+    // // Make sure player is prepared
     if (this._state === MediaStates.IDLE) {
       tasks.push((next) => {
         this.prepare(next);
       });
     }
 
-    // Start playback
+    // console.log(RCTAudioPlayer)
+
+    // // Start playback
     tasks.push((next) => {
       RCTAudioPlayer.play(this._playerId, next);
     });
-
     async.series(tasks, (err, results) => {
       this._updateState(err, MediaStates.PLAYING, results);
       callback(err);
@@ -189,7 +188,7 @@ class Player extends EventEmitter {
   pause(callback = noop) {
     RCTAudioPlayer.pause(this._playerId, (err, results) => {
       // Android emits a pause event on the native side
-      if (Platform.OS === 'ios') {
+      if (Platform.OS === 'ios' || Platform.OS === 'harmony') {
         this._updateState(err, MediaStates.PAUSED, [results]);
       }
       callback(err);
