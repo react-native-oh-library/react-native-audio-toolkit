@@ -27,7 +27,7 @@ import hilog from '@ohos.hilog';
 class Logger {
   private domain: number;
   private prefix: string;
-  private format: string = '%{public}s,%{public}s';
+  private format: string = '%{public}s';
   private isDebug: boolean;
 
   /**
@@ -61,4 +61,4 @@ class Logger {
   }
 }
 
-export default new Logger('Clipboard', 0xFF00, false)
+export default new Logger('AudioToolkit', 0xFF00, false)
