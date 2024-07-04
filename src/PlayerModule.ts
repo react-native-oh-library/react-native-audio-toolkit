@@ -29,6 +29,11 @@ interface setOptions {
   speed: boolean,
 }
 
+interface PlayInfo{
+  duration: number,
+  position: number
+}
+
 export interface Spec extends TurboModule {
   /**
    * Get content of string type, this method returns a `Promise`, so you can use following code to get clipboard content
@@ -64,6 +69,7 @@ export interface Spec extends TurboModule {
   removeListener(): void;
   addListener(eventName: string): void;
   removeListeners(count: Int32): void;
+  getCurrentTime(playerId: number, callback:(err: string, result?: PlayInfo) => void): void
 }
 
 const RCTAudioPlayer =

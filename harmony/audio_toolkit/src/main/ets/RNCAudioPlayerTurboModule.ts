@@ -80,6 +80,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
   onBackground() {
     this.ctx.rnInstance.subscribeToLifecycleEvents('BACKGROUND', () => {
       logger.debug(`app state is BACKGROUND`)
+      this.pauseOnBackground()
     })
   }
   pauseOnBackground() {
