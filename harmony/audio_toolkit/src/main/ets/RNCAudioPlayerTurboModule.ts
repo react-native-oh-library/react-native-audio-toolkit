@@ -45,7 +45,8 @@ enum StateChange {
 
 export class RCTAudioPlayerTurboModule extends TurboModule {
   private readonly SANDBOX_START = '/data/storage';
-  private readonly FILE_MANAGER_START = 'file://docs';
+  private readonly FILE_MANAGER_START = 'file://';
+  private readonly HTTP_START = 'http';
   private readonly FD_PATH = 'fd://';
   private playerMap: Map<number, media.AVPlayer> = new Map()
   private playConfigMap: Map<number, PlayConfig> = new Map()
@@ -242,7 +243,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
     try {
       const avPlayer: media.AVPlayer = await media.createAVPlayer()
       this.setAVPlayerCallback(avPlayer, playerId)
-      if (pathStr.startsWith('http')) {
+      if (pathStr.startsWith(this.HTTP_START)) {
         avPlayer.url = pathStr
       } else {
         let fdPath = this.FD_PATH
@@ -367,7 +368,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
   }
 
   async seek(playerId: number, position: number, callback: () => void) {
-    logger.info(`seekbar:${position}`)
+    logger.debug(`seekbar:${position}`)
     if (!this.checkPlayer(playerId, callback)) {
       return
     }

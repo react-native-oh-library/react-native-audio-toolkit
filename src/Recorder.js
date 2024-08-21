@@ -68,7 +68,6 @@ class Recorder extends EventEmitter {
   }
 
   prepare(callback = noop) {
-    //harmony 选择文件切到后台，不能再次打开文件路径选择器
     if (Platform.OS !== 'harmony') {
       this._updateState(null, MediaStates.PREPARING);
       // Prepare recorder

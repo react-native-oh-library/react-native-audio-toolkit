@@ -1,44 +1,17 @@
-![banner](/banner.png)
+# react-native-audio-toolkit
 
-[![npm version](https://badge.fury.io/js/%40react-native-community%2Faudio-toolkit.svg)](https://badge.fury.io/js/%40react-native-community%2Faudio-toolkit)
+本项目基于 [react-native-audio-toolkit](https://github.com/react-native-audio-toolkit/react-native-audio-toolkit)
 
-This is a cross-platform (Android and iOS) audio library for React Native.
-Both audio playback and recording is supported. In addition to basic
-functionality, many useful features are implemented such as seeking,
-looping and streaming audio files over the network.
+## 文档地址 / Documentation URL 
 
-An example how to use this library is included in the [ExampleApp](/ExampleApp)
-directory. The demo showcases most of the functionality that is available, with
-documentation under [docs](/docs). In the simplest case, playing media is as
-easy as:
+[中文 / Chinese](https://gitee.com/react-native-oh-library/usage-docs/blob/master/zh-cn/react-native-audio-toolkit.md)
 
-```js
-new Player('filename.mp4').play();
-```
+## Codegen
 
-and recording media to filename.mp4 similarly
-```js
-new Recorder(‘filename.mp4’).record();
-```
+该库已接入 codegen，具体请查阅文档。
 
-How to get this stuff running?
-------------------------------
+The library has been integrated with codegen. Please refer to the documentation for details.
 
-* For a quick test drive, check out the [demo application](/ExampleApp)
-* [Include the library](/docs/SETUP.md) in your project
+## 请悉知 / Acknowledgements
 
-Documentation
--------------
-
-* Find the API documentation [here](/docs/API.md)
-* Examples on playback from various [media sources](/docs/SOURCES.md)
-* Notes on [developing the library itself](/docs/DEVELOPING.md)
-* Rough [state diagram](/docs/state_diagram.svg) of the [Player](src/Player.js)
-* View the [changelog](/CHANGELOG.md)
-
-License
--------
-
-All JavaScript, Android and iOS code licensed under MIT license, see LICENSE
-file. Some of the files are from React Native templates and are licensed
-accordingly.
+本项目基于 [The MIT License (MIT)](hhttps://github.com/react-native-audio-toolkit/react-native-audio-toolkit/blob/master/LICENSE) ，请自由地享受和参与开源。
