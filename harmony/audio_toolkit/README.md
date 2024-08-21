@@ -1,4 +1,4 @@
-> 模板版本：v0.0.1
+> 模板版本：v0.0.2
 
 <p align="center">
   <h1 align="center"> <code>@react-native-clipboard/clipboard</code> </h1>

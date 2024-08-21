@@ -75,8 +75,6 @@ export interface Spec extends TurboModule {
   pause(recorderId: number, next: () => void): void;
   // 销毁
   destroy(recorderId: number, next: () => void): void;
-
-  on(next: (data: Event) => void): void;
 }
 
 const RCTAudioRecorder =
