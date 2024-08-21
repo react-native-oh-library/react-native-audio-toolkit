@@ -1,12 +1,10 @@
 import { TurboModule, TurboModuleContext } from '@rnoh/react-native-openharmony/ts';
-import { TM } from "@rnoh/react-native-openharmony/generated/ts"
 import { BusinessError } from '@ohos.base';
 import media from '@ohos.multimedia.media';
-import common from '@ohos.app.ability.common';
 import fs from '@ohos.file.fs';
 import logger from './Logger';
-const TAG = "RCTAudioPlayerTurboModule"
-interface PlayConfig{
+
+interface PlayConfig {
   volume?: number,
   pan?: number,
   wakeLock?: boolean,
@@ -17,48 +15,78 @@ interface PlayConfig{
   continueToPlayInBackground?: boolean
 }
 
-interface PlayInfo{
+interface PlayInfo {
   duration: number,
   position: number
 }
 
+interface Error {
+  err: string,
+  message?: string
+}
+
+enum ConfigKey {
+  LOOPING = 'looping',
+  SPEED = 'speed',
+  VOLUME = 'volume',
+  INITIALIZED = 'initialized'
+}
+
+enum StateChange {
+  IDLE = 'idle',
+  INITIALIZED = 'initialized',
+  PREPARED = 'prepared',
+  PLAYING = 'playing',
+  PAUSED = 'paused',
+  COMPLETED = 'completed',
+  STOPPED = 'stopped',
+  RELEASED = 'released',
+}
+
 export class RCTAudioPlayerTurboModule extends TurboModule {
-  private isSeek: boolean = true;
+  private readonly SANDBOX_START = '/data/storage';
+  private readonly FILE_MANAGER_START = 'file://docs';
+  private readonly FD_PATH = 'fd://';
   private playerMap: Map<number, media.AVPlayer> = new Map()
   private playConfigMap: Map<number, PlayConfig> = new Map()
   private playInfoMap: Map<number, PlayInfo> = new Map()
-  private playSeekCallbacks: Map<number, (err: string, result?: PlayInfo) => void> = new Map()
+  private playSeekCallbacks: Map<number, (err: string | Error, result?: PlayInfo) => void> = new Map()
+
   constructor(protected ctx: TurboModuleContext) {
     super(ctx);
     this.ctx = ctx
     this.onBackground()
   }
-  setPlayer(playerId: number, player: media.AVPlayer){
+
+  setPlayer(playerId: number, player: media.AVPlayer) {
     this.playerMap.set(playerId, player)
   }
-  getPlayer(playerId: number) : media.AVPlayer{
+
+  getPlayer(playerId: number): media.AVPlayer {
     const player = this.playerMap.get(playerId)
     return player
   }
+
   applyConfig(playerId: number) {
     const player = this.playerMap.get(playerId)
     const config = this.playConfigMap.get(playerId)
     if (!config || !player) {
       return
     }
-    if (player.state === 'initialized') {
+    if (player.state === ConfigKey.INITIALIZED) {
       return
     }
     Object.keys(config).forEach(key => {
-      if (key === 'looping') {
-        player.loop = config['looping']
-      } else if (key === 'speed') {
-        player.setSpeed(config['speed'])
-      } else if (key === 'volume') {
-        player.setVolume(config['volume'])
+      if (key === ConfigKey.LOOPING) {
+        player.loop = config[ConfigKey.LOOPING]
+      } else if (key === ConfigKey.SPEED) {
+        player.setSpeed(config[ConfigKey.SPEED])
+      } else if (key === ConfigKey.VOLUME) {
+        player.setVolume(config[ConfigKey.VOLUME])
       }
     })
   }
+
   setConfig(playerId: number, config: PlayConfig) {
     const oldConfig = this.playConfigMap.get(playerId) || {}
     Object.keys(config).forEach(key => {
@@ -66,6 +94,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
     })
     this.playConfigMap.set(playerId, oldConfig)
   }
+
   set(playerId: number, config: PlayConfig, next: (err: string, result: object) => void) {
     const player = this.playerMap.get(playerId)
     if (!player) {
@@ -77,12 +106,14 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
     this.applyConfig(playerId)
     next('', {})
   }
+
   onBackground() {
     this.ctx.rnInstance.subscribeToLifecycleEvents('BACKGROUND', () => {
       logger.debug(`app state is BACKGROUND`)
       this.pauseOnBackground()
     })
   }
+
   pauseOnBackground() {
     this.playConfigMap.forEach((config, playerId) => {
       if (!config.continueToPlayInBackground) {
@@ -93,15 +124,18 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       }
     })
   }
+
   emit(name: string, data: object) {
     this.ctx.rnInstance.emitDeviceEvent(name, data)
   }
+
   toEmit(playerId: number, name: string, data: object) {
     this.emit(`RCTAudioPlayerEvent:${playerId}`, {
       event: name,
       data
     })
   }
+
   setAVPlayerCallback(avPlayer: media.AVPlayer, playerId: number) {
     // seek操作结果回调函数
     avPlayer.on('seekDone', (seekDoneTime: number) => {
@@ -120,27 +154,24 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
     avPlayer.on('stateChange', async (state: string, reason: media.StateChangeReason) => {
       logger.debug(`stateChange:${state}`)
       switch (state) {
-        case 'idle': // 成功调用reset接口后触发该状态机上报
+        case StateChange.IDLE: // 成功调用reset接口后触发该状态机上报
           avPlayer.release(); // 调用release接口销毁实例对象
           break;
-        case 'initialized': // avplayer 设置播放源后触发该状态上报
+        case StateChange.INITIALIZED: // avplayer 设置播放源后触发该状态上报
           avPlayer.prepare();
           break;
-        case 'prepared': // prepare调用成功后上报该状态机
+        case StateChange.PREPARED: // prepare调用成功后上报该状态机
           logger.debug(`prepared called.to and apply config and play`)
           this.applyConfig(playerId)
-          avPlayer.play(); // 调用播放接口开始播放
           break;
-        case 'playing': // play成功调用后触发该状态机上报
+        case StateChange.PLAYING: // play成功调用后触发该状态机上报
           break;
-        case 'paused': // pause成功调用后触发该状态机上报
+        case StateChange.PAUSED: // pause成功调用后触发该状态机上报
           logger.debug('paused called.');
-          this.toEmit(playerId, 'pause', {
-            message: 'player paused'
-          })
           break;
-        case 'completed': // 播放结束后触发该状态机上报
+        case StateChange.COMPLETED: // 播放结束后触发该状态机上报
           logger.debug('completed called.');
+          avPlayer.seek(0)
           this.toEmit(playerId, 'ended', {
             message: 'play completed'
           })
@@ -149,11 +180,11 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
             this.destroy(playerId)
           }
           break;
-        case 'stopped': // stop接口成功调用后触发该状态机上报
+        case StateChange.STOPPED: // stop接口成功调用后触发该状态机上报
           logger.debug('Player state stopped called.');
           avPlayer.reset(); // 调用reset接口初始化avplayer状态
           break;
-        case 'released':
+        case StateChange.RELEASED:
           break;
         default:
           break;
@@ -163,8 +194,8 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       const call = this.playSeekCallbacks.get(playerId)
       if (call) {
         call(``, this.getInfo(playerId))
+        this.playSeekCallbacks.delete(playerId)
       }
-      this.playSeekCallbacks.delete(playerId)
       this.toEmit(playerId, 'seeked', {
         message: 'seek completed'
       })
@@ -205,23 +236,25 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       }
     })
   }
+
   async createPlayer(pathStr: string, playerId: number) {
     logger.debug(`createPlayer path:${pathStr}`)
-    try{
+    try {
       const avPlayer: media.AVPlayer = await media.createAVPlayer()
       this.setAVPlayerCallback(avPlayer, playerId)
       if (pathStr.startsWith('http')) {
         avPlayer.url = pathStr
       } else {
-        let fdPath = 'fd: //'
+        let fdPath = this.FD_PATH
         const context = this.ctx.uiAbilityContext
         let path = context.filesDir + '/' + pathStr
-        if (pathStr.startsWith('/data/storage')) {
+        if (pathStr.startsWith(this.SANDBOX_START) || pathStr.startsWith(this.FILE_MANAGER_START)) {
           path = pathStr
         }
-        logger.debug(`file path:${path}}`)
+        logger.debug(`file path:${path}`)
         const file = await fs.open(path)
         fdPath = fdPath + file.fd
+        logger.debug(`fdPath:${fdPath}`)
         avPlayer.url = fdPath
       }
       this.setPlayer(playerId, avPlayer)
@@ -229,11 +262,13 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       logger.warn(`createPlayer err:${JSON.stringify(e)}`)
     }
   }
+
   getInfo(playerId: number) {
     const info = this.playInfoMap.get(playerId)
     return info
   }
-  getCurrentTime(playerId: number, callback:(err: string, result?: PlayInfo) => void) {
+
+  getCurrentTime(playerId: number, callback: (err: string, result?: PlayInfo) => void) {
     const info = this.playInfoMap.get(playerId)
     if (info) {
       callback('', info)
@@ -241,6 +276,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       callback('not found player')
     }
   }
+
   prepare(playerId: number, path: string, option: PlayConfig, next: () => void) {
     logger.debug(`prepare start`)
     this.setConfig(playerId, option)
@@ -248,6 +284,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       next()
     })
   }
+
   checkPlayer(playerId: number, next: (err?: string) => void) {
     const hasPlayer = this.playerMap.has(playerId)
     if (hasPlayer) {
@@ -267,7 +304,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       const player = this.getPlayer(playerId)
       await player.play()
       callback('', this.getInfo(playerId))
-    } catch(e) {
+    } catch (e) {
       callback?.(`player call play function err:${JSON.stringify(e)}`)
     }
   }
@@ -279,6 +316,9 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
     }
     const player = this.getPlayer(playerId)
     await player.pause()
+    this.toEmit(playerId, 'pause', {
+      message: 'player paused'
+    })
     callback('', this.getInfo(playerId))
   }
 
@@ -296,7 +336,11 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
     } else {
       const oldCall = this.playSeekCallbacks.get(playerId)
       if (oldCall) {
-        oldCall(`seek fail.stopped before seek operation counld finish`)
+        let err: Error = {
+          err: 'seekfail',
+          message: 'stopped before seek operation counld finish'
+        }
+        oldCall(err)
         this.playSeekCallbacks.delete(playerId)
       }
       this.playSeekCallbacks.set(playerId, callback)
@@ -304,6 +348,7 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       await player.pause()
     }
   }
+
   destroy(playerId: number, callback?: () => void) {
     logger.debug(`destroy start`)
     const player = this.getPlayer(playerId)
@@ -316,18 +361,23 @@ export class RCTAudioPlayerTurboModule extends TurboModule {
       callback()
     }
   }
+
   resume(playerId: number, callback: () => void) {
     this.play(playerId, callback)
   }
+
   async seek(playerId: number, position: number, callback: () => void) {
-    logger.debug(`seek:${position}`)
+    logger.info(`seekbar:${position}`)
     if (!this.checkPlayer(playerId, callback)) {
       return
     }
     const player = this.getPlayer(playerId)
     const oldCall = this.playSeekCallbacks.get(playerId)
     if (oldCall) {
-      oldCall(`seek fail`)
+      let err: Error = {
+        err: 'seekfail'
+      }
+      oldCall(err)
       this.playSeekCallbacks.delete(playerId)
     }
     this.playSeekCallbacks.set(playerId, callback)

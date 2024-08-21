@@ -3,14 +3,9 @@ import { TM } from "@rnoh/react-native-openharmony/generated/ts"
 import { BusinessError } from '@ohos.base';
 import media from '@ohos.multimedia.media';
 import fs from '@ohos.file.fs';
-
 import abilityAccessCtrl, { Permissions } from '@ohos.abilityAccessCtrl';
-
 import picker from '@ohos.file.picker';
-
 import logger from './Logger';
-import { JSON } from '@kit.ArkTS';
-import json from '@ohos.util.json';
 
 const TAG = "RCTAudioRecorderTurboModule"
 
@@ -18,14 +13,16 @@ const PERMISSIONS: Array<Permissions> = [
   'ohos.permission.MICROPHONE'
 ]
 
-// class i
 export class RCTAudioRecorderTurboModule extends TurboModule {
   private _file: fs.File;
   // 音频参数
   private avRecorder: media.AVRecorder | undefined = undefined;
   private avProfile: media.AVRecorderProfile;
   private avConfig: media.AVRecorderConfig;
-
+  private readonly AUDIOBITRATE_DEFAULT = 100000;
+  private readonly AUDIOCHANNELS_DEFAULT = 2;
+  private readonly AUDIOSAMPLERATE = 48000;
+  private readonly FD_PATH = 'fd://';
 
   constructor(protected ctx: TurboModuleContext) {
     super(ctx);
@@ -56,40 +53,47 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
       })
     }
   }
+
   emit(name: string, data: object) {
     this.ctx.rnInstance.emitDeviceEvent(name, data);
   }
+
   toEmit(recorderId: number, name: string, data: object) {
-    this.emit('RCTAudioRecorderEvent:' + recorderId, { event: name, data});
+    this.emit('RCTAudioRecorderEvent:' + recorderId, { event: name, data });
   }
+
   // 开始录制对应的流程
-  async startRecordingProcess(path: string, recorderId: number) {
+  async startRecordingProcess(path: string, next: (object?, fsPath?: string) => void,
+    preparingCall?: (object?) => void) {
     try {
       let audioSaveOptions = new picker.AudioSaveOptions();
       audioSaveOptions.newFileNames = [path];
       let audioPicker = new picker.AudioViewPicker();
 
-      audioPicker.save(audioSaveOptions,async  (err: BusinessError, audioSaveResult: Array<string>) => {
-        if (err) {
+      audioPicker.save(audioSaveOptions, async (err: BusinessError, audioSaveResult: Array<string>) => {
+        if (err || !audioSaveResult || audioSaveResult.length == 0) {
+          next(null)
           return;
         }
+        preparingCall(null)
         this._file = fs.openSync(audioSaveResult[0], fs.OpenMode.READ_WRITE)
-        this.avConfig.url = `fd://` + this._file.fd
+        this.avConfig.url = this.FD_PATH + this._file.fd
         this.requestPermission().then(async res => {
           if (res) {
             await this.avRecorder.prepare(this.avConfig)
             await this.avRecorder.start();
+            next(null, audioSaveResult[0])
           }
         })
       });
     } catch (error) {
-      let err: BusinessError = error as BusinessError;
+      next(error)
     }
   }
 
   // 以下demo为使用fs文件系统打开沙箱地址获取媒体文件地址并通过url属性进行播放示例
-
-  async prepare(recorderId: number, path: string, option: TM.RCTAudioRecorder.RecorderOptions, next: (object?) => void) {
+  async prepare(recorderId: number, path: string, option: TM.RCTAudioRecorder.RecorderOptions
+    , next: (object?, fsPath?: string) => void, preparingCall?: (object?) => void) {
     if (path === null || path === undefined) {
       next({
         err: 'invalidpath',
@@ -106,10 +110,10 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
     this.avRecorder = await media.createAVRecorder()
     this.setAudioRecorderCallback(recorderId);
     this.avProfile = {
-      audioBitrate: option.bitRate || 100000, // 音频比特率
-      audioChannels: option.channels || 2, // 音频声道数
+      audioBitrate: option.bitRate || this.AUDIOBITRATE_DEFAULT, // 音频比特率
+      audioChannels: option.channels || this.AUDIOCHANNELS_DEFAULT, // 音频声道数
       audioCodec: media.CodecMimeType.AUDIO_AAC, // 音频编码格式，当前只支持aac
-      audioSampleRate: 48000, // 音频采样率
+      audioSampleRate: this.AUDIOSAMPLERATE, // 音频采样率
       fileFormat: media.ContainerFormatType.CFT_MPEG_4A, // 封装格式，当前只支持m4a
     };
     this.avConfig = {
@@ -117,8 +121,7 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
       profile: this.avProfile,
       url: '', // 参考应用文件访问与管理开发示例新建并读写一个文件
     };
-    await this.startRecordingProcess(path, recorderId)
-    next()
+    await this.startRecordingProcess(path, next, preparingCall)
   }
 
   async record(recorderId: number, next: (object?) => void) {
@@ -126,7 +129,7 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
       this.avRecorder.resume()
       next()
     } else {
-      next({ code: 'notfound', recorderId: recorderId + 'not found.'})
+      next({ code: 'notfound', recorderId: recorderId + 'not found.' })
     }
   }
 
@@ -139,6 +142,7 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
     }
     next()
   }
+
   /**
    * Get clipboard image as JPG in base64, this method returns a `Promise`, so you can use following code to get clipboard content
    * ```javascript
@@ -156,10 +160,12 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
         || this.avRecorder.state === 'paused') { // 仅在started或者paused状态下调用stop为合理状态切换
         await this.avRecorder.stop();
       }
+      next();
     } else {
-      next({ code: 'notfound', recorderId: recorderId + 'not found.'})
+      next({ code: 'notfound', recorderId: recorderId + 'not found.' })
     }
   }
+
   /**
    * (iOS Only)
    * Set content of base64 image type. You can use following code to set clipboard content

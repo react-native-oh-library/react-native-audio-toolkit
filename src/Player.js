@@ -1,4 +1,4 @@
-import {  DeviceEventEmitter, NativeAppEventEmitter, Platform } from 'react-native';
+import { DeviceEventEmitter, NativeAppEventEmitter, Platform } from 'react-native';
 import RCTAudioPlayer from './PlayerModule'
 import async from 'async';
 import EventEmitter from 'eventemitter3';
@@ -10,8 +10,6 @@ import last from 'lodash/last';
 import noop from 'lodash/noop';
 
 let playerId = 0;
-
-// const RCTAudioPlayer = NativeModules.AudioPlayer;
 
 export const PlaybackCategories = {
   Playback: 1,
@@ -97,7 +95,7 @@ class Player extends EventEmitter {
   }
 
   _handleEvent(event, data) {
-    // console.log('event: ' + event + ', data: ' + JSON.stringify(data));
+    //console.error('event: ' + event + ', data: ' + JSON.stringify(data));
     switch (event) {
       case 'progress':
         // TODO
@@ -164,16 +162,14 @@ class Player extends EventEmitter {
 
   play(callback = noop) {
     const tasks = [];
-    // // Make sure player is prepared
+    // Make sure player is prepared
     if (this._state === MediaStates.IDLE) {
       tasks.push((next) => {
         this.prepare(next);
       });
     }
 
-    // console.log(RCTAudioPlayer)
-
-    // // Start playback
+    // Start playback
     tasks.push((next) => {
       RCTAudioPlayer.play(this._playerId, next);
     });
@@ -238,7 +234,6 @@ class Player extends EventEmitter {
         // Seek operation was cancelled; ignore
         return;
       }
-
       this._updateState(err, this._preSeekState, [results]);
       callback(err);
     });

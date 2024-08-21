@@ -3,7 +3,7 @@ import {
   NativeAppEventEmitter,
   DeviceEventEmitter
 } from 'react-native'
-import RCTAudioRecorder from '@react-native-oh-library/audio-toolkit/src/RecorderModule'
+import RCTAudioRecorder from './RecorderModule'
 import async from 'async';
 import EventEmitter from 'eventemitter3';
 import MediaStates from '@react-native-community/audio-toolkit/src/MediaStates';
@@ -68,38 +68,56 @@ class Recorder extends EventEmitter {
   }
 
   prepare(callback = noop) {
-    this._updateState(null, MediaStates.PREPARING);
-
-    // Prepare recorder
-    RCTAudioRecorder.prepare(this._recorderId, this._path, this._options, (err, fsPath) => {
-      this._fsPath = fsPath;
-      this._updateState(err, MediaStates.PREPARED);
-      callback(err, fsPath);
-    });
-
+    //harmony 选择文件切到后台，不能再次打开文件路径选择器
+    if (Platform.OS !== 'harmony') {
+      this._updateState(null, MediaStates.PREPARING);
+      // Prepare recorder
+      RCTAudioRecorder.prepare(this._recorderId, this._path, this._options, (err, fsPath) => {
+        this._fsPath = fsPath;
+        this._updateState(err, MediaStates.PREPARED);
+        callback(err, fsPath);
+      });
+    } else {
+      RCTAudioRecorder.prepare(this._recorderId, this._path, this._options, (err, fsPath) => {
+        this._fsPath = fsPath;
+        this._updateState(err, MediaStates.PREPARED);
+        callback(err, fsPath);
+      }, (err) => {
+        this._updateState(err, MediaStates.PREPARING);
+      });
+    }
     return this;
   }
 
   record(callback = noop) {
     let tasks = [];
-
     // Make sure recorder is prepared
     if (this._state === MediaStates.IDLE) {
       tasks.push((next) => {
-        this.prepare(next);
+        this.prepare((err, fsPath) => {
+          if(Platform.OS === 'harmony'){
+            if(fsPath){
+              this._updateState(err, MediaStates.RECORDING);
+              callback(err, fsPath);
+            }else{
+              this._updateState(err, MediaStates.IDLE);
+              callback(err, null);
+            }
+          }
+        });
       });
     }
-
     // Start recording
     tasks.push((next) => {
       RCTAudioRecorder.record(this._recorderId, next);
     });
-
     async.series(tasks, (err) => {
-      this._updateState(err, MediaStates.RECORDING);
-      callback(err);
+      if(Platform.OS !== 'harmony'){
+        this._updateState(err, MediaStates.RECORDING);
+        callback(err);
+      }
+      
     });
-
     return this;
   }
 
@@ -136,7 +154,7 @@ class Recorder extends EventEmitter {
       });
     } else {
       this.record((err) => {
-        callback(err, false);
+        callback(err,false);
       });
     }
 
