@@ -94,11 +94,11 @@ class Recorder extends EventEmitter {
     if (this._state === MediaStates.IDLE) {
       tasks.push((next) => {
         this.prepare((err, fsPath) => {
-          if(Platform.OS === 'harmony'){
-            if(fsPath){
+          if (Platform.OS === 'harmony') {
+            if (fsPath) {
               this._updateState(err, MediaStates.RECORDING);
               callback(err, fsPath);
-            }else{
+            } else {
               this._updateState(err, MediaStates.IDLE);
               callback(err, null);
             }
@@ -111,11 +111,15 @@ class Recorder extends EventEmitter {
       RCTAudioRecorder.record(this._recorderId, next);
     });
     async.series(tasks, (err) => {
-      if(Platform.OS !== 'harmony'){
+      if (Platform.OS !== 'harmony') {
+        this._updateState(err, MediaStates.RECORDING);
+        callback(err);
+        return;
+      }
+      if (this._state === MediaStates.PAUSED) {
         this._updateState(err, MediaStates.RECORDING);
         callback(err);
       }
-      
     });
     return this;
   }
