@@ -1,5 +1,5 @@
 {
-  "name": "@react-native-oh-library/audio-toolkit",
+  "name": "@react-native-oh-tpl/audio-toolkit",
   "version": "2.0.3-0.0.2",
   "description": "Cross-platform audio library for React Native",
   "main": "./src/index.ts",

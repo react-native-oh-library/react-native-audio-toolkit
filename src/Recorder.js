@@ -50,7 +50,6 @@ class Recorder extends EventEmitter {
   }
 
   _handleEvent(event, data) {
-    //console.log('event: ' + event + ', data: ' + JSON.stringify(data));
     switch (event) {
       case 'ended':
         this._state = Math.min(this._state, MediaStates.PREPARED);
@@ -60,7 +59,6 @@ class Recorder extends EventEmitter {
         break;
       case 'error':
         this._reset();
-        //this.emit('error', data);
         break;
     }
 
@@ -94,15 +92,7 @@ class Recorder extends EventEmitter {
     if (this._state === MediaStates.IDLE) {
       tasks.push((next) => {
         this.prepare((err, fsPath) => {
-          if (Platform.OS === 'harmony') {
-            if (fsPath) {
-              this._updateState(err, MediaStates.RECORDING);
-              callback(err, fsPath);
-            } else {
-              this._updateState(err, MediaStates.IDLE);
-              callback(err, null);
-            }
-          }
+          this.harmonyPrepareCallBack(err, fsPath, callback);
         });
       });
     }
@@ -122,6 +112,19 @@ class Recorder extends EventEmitter {
       }
     });
     return this;
+  }
+
+  harmonyPrepareCallBack(err, fsPath, callback = noop) {
+    if (Platform.OS !== 'harmony') {
+      return;
+    }
+    if (fsPath) {
+      this._updateState(err, MediaStates.RECORDING);
+      callback(err, fsPath);
+    } else {
+      this._updateState(err, MediaStates.IDLE);
+      callback(err, null);
+    }
   }
 
   stop(callback = noop) {
