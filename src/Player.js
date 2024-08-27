@@ -95,7 +95,6 @@ class Player extends EventEmitter {
   }
 
   _handleEvent(event, data) {
-    //console.log('event: ' + event + ', data: ' + JSON.stringify(data));
     switch (event) {
       case 'progress':
         // TODO
@@ -109,7 +108,6 @@ class Player extends EventEmitter {
         break;
       case 'error':
         this._state = MediaStates.ERROR;
-        // this.emit('error', data);
         break;
       case 'pause':
         this._state = MediaStates.PAUSED;
