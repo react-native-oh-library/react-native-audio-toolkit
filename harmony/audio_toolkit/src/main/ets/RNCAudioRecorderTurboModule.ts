@@ -37,13 +37,18 @@ const PERMISSIONS: Array<Permissions> = [
   'ohos.permission.MICROPHONE',
 ];
 
+interface Error {
+  err?: string;
+  message?: string;
+}
+
 export class RCTAudioRecorderTurboModule extends TurboModule {
   private _file: fs.File;
   // 音频参数
   private avRecorder: media.AVRecorder | undefined = undefined;
   private avProfile: media.AVRecorderProfile;
   private avConfig: media.AVRecorderConfig;
-  private readonly AUDIOBITRATE_DEFAULT = 100000;
+  private readonly AUDIOBITRATE_DEFAULT = 48000;
   private readonly AUDIOCHANNELS_DEFAULT = 2;
   private readonly AUDIOSAMPLERATE = 48000;
   private readonly FD_PATH = 'fd://';
@@ -107,11 +112,13 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
             await this.avRecorder.prepare(this.avConfig);
             await this.avRecorder.start();
             next(null, audioSaveResult[0]);
+          } else {
+            next(null);
           }
         });
       });
     } catch (error) {
-      next(error);
+      next(null);
     }
   }
 
@@ -134,10 +141,10 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
     this.avRecorder = await media.createAVRecorder();
     this.setAudioRecorderCallback(recorderId);
     this.avProfile = {
-      audioBitrate: option.bitRate || this.AUDIOBITRATE_DEFAULT, // 音频比特率
-      audioChannels: option.channels || this.AUDIOCHANNELS_DEFAULT, // 音频声道数
+      audioBitrate: option.bitRate ?? this.AUDIOBITRATE_DEFAULT, // 音频比特率
+      audioChannels: option.channels ?? this.AUDIOCHANNELS_DEFAULT, // 音频声道数
       audioCodec: media.CodecMimeType.AUDIO_AAC, // 音频编码格式，当前只支持aac
-      audioSampleRate: this.AUDIOSAMPLERATE, // 音频采样率
+      audioSampleRate: option.sampleRate ?? this.AUDIOSAMPLERATE, // 音频采样率
       fileFormat: media.ContainerFormatType.CFT_MPEG_4A, // 封装格式，当前只支持m4a
     };
     this.avConfig = {
