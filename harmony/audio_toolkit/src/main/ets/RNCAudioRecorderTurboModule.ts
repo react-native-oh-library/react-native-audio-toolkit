@@ -37,9 +37,9 @@ const PERMISSIONS: Array<Permissions> = [
   'ohos.permission.MICROPHONE',
 ];
 
-interface Error {
-  err?: string;
-  message?: string;
+enum FormatType {
+  CFT_MPEG_4 = 'mp4',
+  CFT_MPEG_4A = 'm4a'
 }
 
 export class RCTAudioRecorderTurboModule extends TurboModule {
@@ -141,18 +141,42 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
     this.avRecorder = await media.createAVRecorder();
     this.setAudioRecorderCallback(recorderId);
     this.avProfile = {
-      audioBitrate: option.bitRate ?? this.AUDIOBITRATE_DEFAULT, // 音频比特率
+      audioBitrate: option.bitrate ?? this.AUDIOBITRATE_DEFAULT, // 音频比特率
       audioChannels: option.channels ?? this.AUDIOCHANNELS_DEFAULT, // 音频声道数
       audioCodec: media.CodecMimeType.AUDIO_AAC, // 音频编码格式，当前只支持aac
       audioSampleRate: option.sampleRate ?? this.AUDIOSAMPLERATE, // 音频采样率
-      fileFormat: media.ContainerFormatType.CFT_MPEG_4A, // 封装格式，当前只支持m4a
+      fileFormat: this.getFileFormat(option.format, path), // 封装格式，当前只支持m4a、mp4
     };
+    logger.debug(`avProfile = ${JSON.stringify(this.avProfile)}}`);
     this.avConfig = {
       audioSourceType: media.AudioSourceType.AUDIO_SOURCE_TYPE_MIC, // 音频输入源，这里设置为麦克风
       profile: this.avProfile,
       url: '', // 参考应用文件访问与管理开发示例新建并读写一个文件
     };
     await this.startRecordingProcess(path, next, preparingCall);
+  }
+
+  private formatFromPath(path: String): media.ContainerFormatType {
+    if (!path) {
+      return media.ContainerFormatType.CFT_MPEG_4A;
+    }
+    let ext = path.substring(path.lastIndexOf('.') + 1);
+    if (!ext) {
+      return media.ContainerFormatType.CFT_MPEG_4A;
+    }
+    return this.getFileFormat(ext);
+  }
+
+  getFileFormat(format: string, path?: string): media.ContainerFormatType {
+    if (!format) {
+      return this.formatFromPath(path);
+    }
+    switch (format) {
+      case FormatType.CFT_MPEG_4:
+        return media.ContainerFormatType.CFT_MPEG_4;
+      default:
+        return media.ContainerFormatType.CFT_MPEG_4A
+    }
   }
 
   async record(recorderId: number, next: (object?) => void): Promise<void> {
@@ -198,29 +222,22 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
   }
 
   /**
-   * (iOS Only)
-   * Set content of base64 image type. You can use following code to set clipboard content
-   * ```javascript
-   * _setContent() {
-   *   Clipboard.setImage(...);
-   * }
-   * ```
-   * @param the content to be stored in the clipboard.
+   * recorder destroy
+   * @param recorderId
+   * @param next
+   * @returns void
    */
   async destroy(recorderId: number, next: (object?) => void): Promise<void> {
-    if (this.avRecorder !== undefined) {
-      if (this.avRecorder.state === 'stopped') {
-        // 2.重置
-        await this.avRecorder.reset();
-        // 3.释放录制实例
-        await this.avRecorder.release();
-
-        // 4.关闭录制文件fd
-        fs.close(this._file);
-        this.toEmit(recorderId, 'info', {
-          message: 'Destroyed recorder',
-        });
-      }
+    if (this.avRecorder) {
+      //重置
+      await this.avRecorder.reset();
+      //释放录制实例
+      await this.avRecorder.release();
+      //关闭录制文件fd
+      fs.close(this._file);
+      this.toEmit(recorderId, 'info', {
+        message: 'Destroyed recorder',
+      });
     }
     logger.debug(TAG, 'RCTAudioRecorderTurboModule destroy');
   }
@@ -233,11 +250,11 @@ export class RCTAudioRecorderTurboModule extends TurboModule {
         if (result.authResults[0] === 0) {
           resolve(true);
         } else {
-          logger.debug(TAG, `getString,text out:用户拒绝授权`);
+          logger.debug(`getString,text out:用户拒绝授权`);
           resolve(false);
         }
       }).catch(() => {
-        logger.debug(TAG, `getString,text out:用户拒绝授权`);
+        logger.debug(`getString,text out:用户拒绝授权`);
         resolve(false);
       });
     });
