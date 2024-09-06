@@ -26,7 +26,7 @@ import { RNPackage, TurboModulesFactory } from '@rnoh/react-native-openharmony/t
 import type { TurboModule, TurboModuleContext } from '@rnoh/react-native-openharmony/ts';
 import { RCTAudioPlayerTurboModule } from './RNCAudioPlayerTurboModule';
 import { RCTAudioRecorderTurboModule } from './RNCAudioRecorderTurboModule';
-export const AUDIO_TYPE: string = "RCTAudioPlayer1"
+export const AUDIO_TYPE: string = 'RCTAudioPlayer1';
 
 class AudioPlayer1TurboModulesFactory extends TurboModulesFactory {
   createTurboModule(name: string): TurboModule | null {
