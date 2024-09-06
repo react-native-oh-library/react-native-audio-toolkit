@@ -11,7 +11,7 @@ interface RecorderOptions {
   /**
    * Set bitrate for the recorder, in bits per second (Default: 128000)
    */
-  bitRate: number;
+  bitrate: number;
 
   /**
    * Set number of channels (Default: 2)
